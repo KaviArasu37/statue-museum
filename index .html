@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0515}
+#root{width:100%;max-width:360px;margin:0 auto;display:flex;flex-direction:column;min-height:100vh;justify-content:center}
+.phone{background:#12082a;border-radius:28px;overflow:hidden;position:relative;min-height:580px;display:flex;flex-direction:column}
+.layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;opacity:0;pointer-events:none;transition:opacity 0.3s}
+.layer.show{opacity:1;pointer-events:auto}
+canvas#fx{position:absolute;inset:0;pointer-events:none;z-index:20}
+
+@keyframes pop{0%{transform:scale(0.4) rotate(-10deg);opacity:0}65%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes wiggle{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-12deg) scale(1.05)}75%{transform:rotate(12deg) scale(1.05)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-18px) scale(1.08)}55%{transform:translateY(-10px) scale(1.04)}}
+@keyframes sneeze{0%{transform:scale(1)}20%{transform:scale(1.3) rotate(-6deg)}50%{transform:scale(0.88) rotate(4deg)}80%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes goldGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,216,64,0)}50%{box-shadow:0 0 32px 10px rgba(255,216,64,0.45)}}
+@keyframes dimIn{from{opacity:0}to{opacity:1}}
+@keyframes aliveFloat{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-10px) rotate(4deg)}66%{transform:translateY(-5px) rotate(-3deg)}}
+@keyframes timerDrain{from{width:100%}to{width:0%}}
+@keyframes curatorFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes curatorTalk{0%,100%{transform:scale(1)}30%{transform:scale(1.12)}60%{transform:scale(0.95)}}
+@keyframes curatorExcited{0%,100%{transform:rotate(0) scale(1)}20%{transform:rotate(-15deg) scale(1.2)}60%{transform:rotate(12deg) scale(1.1)}}
+@keyframes speechPop{0%{transform:scale(0) translateX(-50%);opacity:0}70%{transform:scale(1.08) translateX(-50%)}100%{transform:scale(1) translateX(-50%);opacity:1}}
+@keyframes speechFade{from{opacity:1}to{opacity:0}}
+@keyframes jackpotShake{0%,100%{transform:rotate(0) scale(1)}15%{transform:rotate(-8deg) scale(1.15)}45%{transform:rotate(8deg) scale(1.2)}75%{transform:rotate(-4deg) scale(1.12)}}
+@keyframes roomSlide{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes statueFreeze{0%{transform:scale(1)}40%{transform:scale(1.2)}70%{transform:scale(0.92)}100%{transform:scale(1)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:0.6}50%{transform:scale(1.08);opacity:1}}
+@keyframes hintPulse{0%,100%{box-shadow:0 0 0 0 rgba(226,75,74,0.5)}50%{box-shadow:0 0 0 8px rgba(226,75,74,0)}}
+
+.orb{width:160px;height:160px;border-radius:50%;background:#1e0f3a;border:2.5px dashed rgba(127,119,221,0.35);display:flex;align-items:center;justify-content:center;font-size:72px;cursor:pointer;position:relative;z-index:2}
+.orb.dancing{animation:wiggle 0.5s ease-in-out infinite}
+.orb.golden{border:3px solid #FFD840;background:#231800;animation:goldGlow 1.2s ease-in-out infinite,wiggle 0.5s ease-in-out infinite}
+.orb.reacting-spin{animation:spin 0.65s linear}
+.orb.reacting-bounce{animation:bounce 0.55s cubic-bezier(.34,1.56,.64,1)}
+.orb.reacting-sneeze{animation:sneeze 0.5s ease}
+.orb.frozen{animation:statueFreeze 0.4s ease forwards;border-style:solid;border-color:rgba(127,119,221,0.6)}
+.orb.jackpot{animation:jackpotShake 0.6s ease}
+
+.curator-wrap{position:relative;margin-bottom:6px;display:flex;flex-direction:column;align-items:center}
+.curator{font-size:36px;animation:curatorFloat 3s ease-in-out infinite;cursor:default;position:relative;z-index:2}
+.curator.talking{animation:curatorTalk 0.35s ease}
+.curator.excited{animation:curatorExcited 0.5s ease}
+.curator-name{font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.07em;margin-top:2px}
+.speech-bubble{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1e1040;border:1.5px solid rgba(127,119,221,0.4);border-radius:14px;padding:8px 13px;min-width:140px;max-width:210px;white-space:nowrap;text-align:center;font-size:12px;color:rgba(255,255,255,0.85);line-height:1.4;pointer-events:none;z-index:30;transform-origin:bottom center}
+.speech-bubble::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1e1040}
+.speech-bubble.in{animation:speechPop 0.3s cubic-bezier(.34,1.56,.64,1) forwards}
+.speech-bubble.out{animation:speechFade 0.3s ease forwards}
+
+.timer-bar{width:100%;height:7px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;margin:14px 0 6px}
+.timer-fill{height:100%;border-radius:4px;background:#7F77DD}
+.timer-fill.run{animation:timerDrain linear forwards}
+.timer-fill.urgent{background:#E24B4A}
+
+.freeze-btn{width:100%;height:68px;border-radius:20px;background:#E24B4A;border:none;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;transition:transform 0.08s,background 0.15s,box-shadow 0.3s;margin-top:8px;position:relative;overflow:hidden}
+.freeze-btn.hint-glow{animation:hintPulse 1s ease-in-out 4}
+.freeze-btn::before{content:'FREEZE!';position:absolute;bottom:7px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:0.14em;color:rgba(255,255,255,0.5);font-weight:700;white-space:nowrap}
+.freeze-btn:active{transform:scale(0.94)}
+.freeze-btn.locked{background:#1D9E75}
+.freeze-btn.locked::before{content:'FROZEN ✓'}
+
+.dot-row{display:flex;gap:10px;margin-bottom:14px}
+.dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,0.12);transition:all 0.35s}
+.dot.done{background:#FFD840;box-shadow:0 0 6px rgba(255,216,64,0.4)}
+.dot.active{background:#fff;transform:scale(1.25)}
+
+.room-pill{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.65);margin-bottom:10px;animation:roomSlide 0.4s ease}
+.statue-count{font-size:11px;color:rgba(255,255,255,0.3);margin-top:8px;transition:color 0.3s}
+.statue-count.bump{color:#FFD840}
+
+.golden-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#FFD840;color:#1a0800;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;animation:fadeUp 0.35s ease}
+
+.verdict-face{font-size:56px;margin-bottom:10px}
+.verdict-main{font-size:18px;font-weight:500;color:#fff;text-align:center;line-height:1.35;margin-bottom:5px}
+.verdict-sub{font-size:13px;color:#5DCAA5;text-align:center;line-height:1.5;margin-bottom:22px}
+.next-btn{width:100%;height:56px;border-radius:18px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;transition:background 0.15s,transform 0.1s}
+.next-btn:active{background:rgba(255,255,255,0.14);transform:scale(0.97)}
+
+.ending-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,#1a0f2e 0%,#06020f 100%);z-index:0;animation:dimIn 1.4s ease}
+.alive-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;z-index:1;margin-bottom:18px}
+.alive-cell{aspect-ratio:1;background:rgba(255,255,255,0.06);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;animation:aliveFloat ease-in-out infinite;border:1px solid rgba(255,255,255,0.08)}
+.ending-title{font-size:24px;font-weight:600;color:#fff;text-align:center;z-index:1;margin-bottom:6px;animation:fadeUp 0.5s ease 0.6s both}
+.ending-sub{font-size:13px;color:rgba(255,255,255,0.45);text-align:center;z-index:1;margin-bottom:22px;animation:fadeUp 0.4s ease 0.85s both;line-height:1.6}
+.tease{background:rgba(255,216,64,0.09);border:1px solid rgba(255,216,64,0.22);border-radius:14px;padding:12px 16px;z-index:1;text-align:center;animation:fadeUp 0.4s ease 1.1s both;width:100%;margin-bottom:16px}
+.tease-text{font-size:13px;color:#FFD840;line-height:1.5}
+.replay-btn{width:100%;height:54px;border-radius:18px;background:#7F77DD;border:none;color:#fff;font-size:15px;font-weight:600;cursor:pointer;z-index:1;animation:fadeUp 0.4s ease 1.4s both;transition:transform 0.1s,background 0.15s;letter-spacing:0.02em}
+.replay-btn:active{transform:scale(0.96);background:#6a62c8}
+.score-badge{background:rgba(93,202,165,0.12);border:1px solid rgba(93,202,165,0.25);border-radius:12px;padding:8px 16px;z-index:1;animation:fadeUp 0.4s ease 0.4s both;margin-bottom:14px}
+.score-text{font-size:12px;color:#5DCAA5;text-align:center}
+</style>
+</head>
+<body>
+<div id="root">
+<div class="phone" id="phone">
+  <canvas id="fx"></canvas>
+
+  <div class="layer show" id="l-dance">
+    <div class="room-pill" id="room-pill">🌿 Jungle Room</div>
+    <div class="dot-row" id="dots"></div>
+    <div class="curator-wrap">
+      <div class="curator" id="curator">🎩</div>
+      <div class="curator-name">CURATOR BARNABAS</div>
+      <div class="speech-bubble" id="speech" style="display:none"></div>
+    </div>
+    <div class="orb dancing" id="orb">🐆</div>
+    <div class="timer-bar"><div class="timer-fill" id="tfill"></div></div>
+    <div class="freeze-btn" id="fbtn" onclick="doFreeze()">🛑</div>
+    <div class="statue-count" id="scnt">0 statues collected</div>
+  </div>
+
+  <div class="layer" id="l-verdict">
+    <div class="curator-wrap" style="margin-bottom:18px">
+      <div class="curator" id="v-curator" style="font-size:44px;animation:curatorFloat 3s ease-in-out infinite">🎩</div>
+    </div>
+    <div class="verdict-face" id="vface">🧐</div>
+    <div class="verdict-main" id="vmain"></div>
+    <div class="verdict-sub" id="vsub"></div>
+    <div class="next-btn" id="nbtn" onclick="nextRoom()" style="opacity:0;pointer-events:none">➡️</div>
+  </div>
+
+  <div class="layer" id="l-ending">
+    <div class="ending-bg"></div>
+    <div class="score-badge"><div class="score-text" id="score-text">You made 4 statues today!</div></div>
+    <div class="alive-grid" id="alive-grid"></div>
+    <div class="ending-title">The museum is alive. 🌟</div>
+    <div class="ending-sub">Every statue you made<br>is dancing tonight.</div>
+    <div class="tease"><div class="tease-text">✨ New rooms waiting<br>for tomorrow's sculptor</div></div>
+    <button class="replay-btn" onclick="restart()">🔄 Make more statues</button>
+  </div>
+</div>
+</div>
+
+<script>
+const ROOMS=[
+  {name:'🌿 Jungle Room',   emoji:'🐆', frozen:'🦁'},
+  {name:'🚀 Space Wing',    emoji:'👨‍🚀', frozen:'🛸'},
+  {name:'⛈️ Weather Hall',  emoji:'🌪️', frozen:'❄️'},
+  {name:'🌊 Ocean Gallery', emoji:'🐠', frozen:'🐙'},
+];
+
+const CURATOR_HINTS=['Strike a pose!','Now… FREEZE!','Be very still…','Hold it! Hold it!','Almost… almost…','The museum needs you!'];
+
+const NORMAL_VERDICTS=[
+  ['🧐','The left elbow alone…','is worth a million pounds.'],
+  ['🎩','Bold choice.','The visitors won\'t understand it. But I do.'],
+  ['📸','This one goes on the poster.','Obviously.'],
+  ['👁️','Remarkable.','Truly remarkable.'],
+  ['🤌','Forty years of curating.','The finest work I have seen.'],
+  ['🏛️','It belongs in the great hall.','No question.'],
+  ['🖼️','I\'ve seen a thousand statues.','None like this.'],
+  ['🎨','The pose. The expression.','Chef\'s kiss.'],
+];
+
+const SURPRISE_VERDICTS=[
+  ['🥹','I\'m not crying.','The museum is just dusty.'],
+  ['🤯','I need to sit down.',''],
+  ['😤','The other statues','are embarrassed.'],
+  ['🫢','Do not tell the other curators','I said this.'],
+  ['🎺','I have called a trumpeter.','He is on his way.'],
+  ['💌','I am writing a letter','to the Queen about this.'],
+  ['🏆','I am resigning.','This is the peak. It\'s all over.'],
+  ['🧃','Someone bring me juice.','I cannot cope.'],
+];
+
+const GOLDEN_VERDICT=['👑','A golden statue.','Once in a generation. Maybe twice.'];
+
+const CURATOR_MOODS={
+  normal:['🎩','😐','🧐'],
+  impressed:['🤩','😮','🎉'],
+  overjoyed:['🥳','🤯','💃'],
+  golden:['👑','🌟','✨'],
+};
+
+const REACTIONS={
+  giggle:{cls:'reacting-bounce',particles:'sparkle'},
+  spin:  {cls:'reacting-spin',  particles:'stars'},
+  sneeze:{cls:'reacting-sneeze',particles:'glitter'},
+};
+
+let room=0,statues=0,isGolden=false,phase='dance';
+let autoTimer=null,hintTimer=null,sessionPool=[],hintShown=false,curatorMood='normal';
+
+const canvas=document.getElementById('fx');
+const ctx=canvas.getContext('2d');
+let particles=[],rafId=null;
+
+function resizeCanvas(){const p=document.getElementById('phone');canvas.width=p.offsetWidth;canvas.height=p.offsetHeight;}
+function showLayer(id){document.querySelectorAll('.layer').forEach(l=>l.classList.remove('show'));document.getElementById(id).classList.add('show');}
+function buildDots(){
+  const row=document.getElementById('dots');row.innerHTML='';
+  ROOMS.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i<room?' done':i===room?' active':'');row.appendChild(d);});
+}
+function shuffle(a){return [...a].sort(()=>Math.random()-0.5)}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+
+// ── CURATOR SPEECH ──
+let speechTO=null;
+function showSpeech(text,dur=2200){
+  const el=document.getElementById('speech');
+  el.textContent=text;el.style.display='block';
+  el.className='speech-bubble in';
+  clearTimeout(speechTO);
+  speechTO=setTimeout(()=>{el.className='speech-bubble out';setTimeout(()=>el.style.display='none',280);},dur);
+}
+function setCuratorFace(mood,elId='curator'){
+  const el=document.getElementById(elId);
+  el.textContent=pick(CURATOR_MOODS[mood]||CURATOR_MOODS.normal);
+  curatorMood=mood;
+}
+function animateCurator(type){
+  const c=document.getElementById('curator');
+  c.classList.remove('talking','excited');
+  void c.offsetWidth;
+  c.classList.add(type);
+  setTimeout(()=>c.classList.remove('talking','excited'),600);
+}
+
+// ── HINTS ──
+function scheduleHints(totalDur){
+  clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=>{
+    if(phase==='dance'){
+      showSpeech(pick(CURATOR_HINTS));
+      animateCurator('talking');
+      hintTimer=setTimeout(()=>{
+        if(phase==='dance'){showSpeech('NOW! FREEZE! 🛑',2000);animateCurator('excited');setCuratorFace('impressed');}
+      },totalDur*0.45);
+    }
+  },totalDur*0.28);
+}
+
+// ── SESSION ──
+function startSession(){
+  sessionPool=shuffle(NORMAL_VERDICTS);
+  room=0;statues=0;isGolden=false;hintShown=false;
+  loadRoom();
+}
+
+function loadRoom(){
+  phase='dance';
+  const r=ROOMS[room];
+  document.getElementById('room-pill').textContent=r.name;
+  setCuratorFace('normal');
+  showSpeech('Welcome to '+r.name.replace(/^[^ ]+ /,'')+'!',2500);
+  setTimeout(()=>animateCurator('talking'),100);
+
+  const orb=document.getElementById('orb');
+  orb.textContent=r.emoji;
+  orb.className='orb dancing';
+  orb.querySelector&&orb.querySelector('.golden-badge')&&orb.querySelector('.golden-badge').remove();
+
+  const fbtn=document.getElementById('fbtn');
+  fbtn.className='freeze-btn';
+  fbtn.innerHTML='🛑';
+
+  if(room===0&&!hintShown){fbtn.classList.add('hint-glow');hintShown=true;}
+
+  document.getElementById('scnt').textContent=statues+' statue'+(statues!==1?'s':'')+' collected';
+  buildDots();
+  showLayer('l-dance');
+
+  isGolden=Math.random()<0.1;
+  if(isGolden){
+    setTimeout(()=>{
+      orb.className='orb dancing golden';
+      const badge=document.createElement('div');badge.className='golden-badge';badge.textContent='⭐ GOLDEN STATUE';
+      orb.appendChild(badge);
+      showSpeech('✨ A golden one! Freeze it!',2800);
+      setCuratorFace('golden');animateCurator('excited');
+    },1800);
+  }
+
+  const dur=(8+Math.random()*5)*1000;
+  const fill=document.getElementById('tfill');
+  fill.className='timer-fill';fill.style.animation='none';
+  void fill.offsetWidth;
+  fill.className='timer-fill run';fill.style.animationDuration=dur+'ms';
+  setTimeout(()=>fill.classList.add('urgent'),dur*0.62);
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{if(phase==='dance')doFreeze();},dur);
+  scheduleHints(dur);
+}
+
+// ── FREEZE ──
+function doFreeze(){
+  if(phase!=='dance')return;
+  phase='freeze';
+  clearTimeout(autoTimer);clearTimeout(hintTimer);
+
+  const r=ROOMS[room];
+  const orb=document.getElementById('orb');
+  const roll=Math.random();
+  let reaction=null;
+  if(roll<0.15)reaction='giggle';
+  else if(roll<0.25)reaction='spin';
+  else if(roll<0.31)reaction='sneeze';
+
+  const jackpot=!isGolden&&Math.random()<0.08;
+  if(jackpot){
+    orb.classList.add('jackpot');
+    spawnParticles('rainbow');
+    setCuratorFace('overjoyed');
+    showSpeech('🤯 EXTRAORDINARY!!',2200);
+    animateCurator('excited');
+  }
+
+  const finalize=()=>{
+    orb.textContent=r.frozen;orb.className='orb frozen';
+    if(isGolden)spawnParticles('gold');
+    const fbtn=document.getElementById('fbtn');
+    fbtn.className='freeze-btn locked';fbtn.innerHTML='✅';
+    statues++;
+    const sc=document.getElementById('scnt');
+    sc.textContent=statues+' statue'+(statues!==1?'s':'')+' collected';
+    sc.classList.add('bump');
+    setTimeout(()=>sc.classList.remove('bump'),600);
+    setTimeout(showVerdict,jackpot?1100:800);
+  };
+
+  if(reaction){
+    const rcls=REACTIONS[reaction].cls;
+    orb.classList.remove('dancing','golden');orb.classList.add(rcls);
+    spawnParticles(REACTIONS[reaction].particles);
+    if(!jackpot){
+      setCuratorFace('impressed');
+      showSpeech(reaction==='giggle'?'Ha! It tickles!':reaction==='spin'?'Whoa whoa whoa!':'Bless you, creature!',1600);
+      animateCurator('talking');
+    }
+    setTimeout(finalize,650);
+  } else {
+    if(!jackpot){setCuratorFace('impressed');showSpeech('Magnificent! 📸',1500);animateCurator('talking');}
+    finalize();
+  }
+}
+
+// ── VERDICT ──
+function showVerdict(){
+  phase='verdict';
+  let v;
+  if(isGolden)v=GOLDEN_VERDICT;
+  else if(Math.random()<0.2)v=pick(SURPRISE_VERDICTS);
+  else v=sessionPool[room%sessionPool.length];
+
+  const vc=document.getElementById('v-curator');
+  vc.textContent=isGolden?'👑':curatorMood==='overjoyed'?'🤯':'🎩';
+
+  const face=document.getElementById('vface');
+  face.textContent=v[0];face.style.animation='none';void face.offsetWidth;
+  face.style.animation='pop 0.45s cubic-bezier(.34,1.56,.64,1) forwards';
+  document.getElementById('vmain').textContent=v[1];
+  document.getElementById('vsub').textContent=v[2];
+  showLayer('l-verdict');
+
+  const nb=document.getElementById('nbtn');
+  nb.style.opacity='0';nb.style.pointerEvents='none';
+  nb.textContent=room>=ROOMS.length-1?'🏛️':'➡️';
+  setTimeout(()=>{nb.style.opacity='1';nb.style.pointerEvents='auto';nb.style.animation='fadeUp 0.3s ease';},1400);
+}
+
+function nextRoom(){room++;if(room>=ROOMS.length)triggerEnding();else loadRoom();}
+
+// ── ENDING ──
+function triggerEnding(){
+  showLayer('l-ending');
+  document.getElementById('score-text').textContent='You made '+statues+' statue'+(statues!==1?'s':'')+' today! 🎨';
+  const grid=document.getElementById('alive-grid');grid.innerHTML='';
+  const all=[...ROOMS.map(r=>r.frozen),'⭐','🎨','🏺','🖼️','🌟','🎭','✨','🏆'];
+  all.forEach((e,i)=>{
+    const cell=document.createElement('div');cell.className='alive-cell';cell.textContent=e;
+    cell.style.animationDuration=(2.2+Math.random()*1.8)+'s';
+    cell.style.animationDelay=(i*0.1)+'s';
+    grid.appendChild(cell);
+  });
+  setTimeout(()=>spawnParticles('rainbow'),500);
+  setTimeout(()=>spawnParticles('gold'),1200);
+  setTimeout(()=>spawnParticles('sparkle'),2100);
+}
+
+function restart(){startSession();}
+
+// ── PARTICLES ──
+const PALETTES={
+  sparkle:['#FFD840','#fff','#FFEC80','#5DCAA5'],
+  stars:  ['#fff','#c8e6ff','#FFD840','#7F77DD'],
+  glitter:['#ED93B1','#c8e6ff','#fff','#FFD840','#5DCAA5'],
+  gold:   ['#FFD840','#FFA500','#FFEC80','#fff'],
+  rainbow:['#E24B4A','#FFD840','#5DCAA5','#7F77DD','#F0997B','#fff','#ED93B1'],
+};
+
+function spawnParticles(type,count=52){
+  resizeCanvas();
+  const cx=canvas.width/2,cy=canvas.height*0.38;
+  const cols=PALETTES[type]||PALETTES.sparkle;
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2,speed=2.5+Math.random()*5.5;
+    particles.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,size:2+Math.random()*5,color:cols[i%cols.length],life:1,decay:0.012+Math.random()*0.014,shape:Math.random()>0.45?'circle':'star'});
+  }
+  if(!rafId)rafId=requestAnimationFrame(tick);
+}
+
+function tick(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles=particles.filter(p=>p.life>0);
+  particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life-=p.decay;
+    ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;
+    const r=Math.max(0,p.size*p.life);
+    if(p.shape==='star'){ctx.save();ctx.translate(p.x,p.y);ctx.font=`${p.size*2.8}px serif`;ctx.fillText('✦',0,0);ctx.restore();}
+    else if(r>0){ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();}
+  });
+  ctx.globalAlpha=1;
+  if(particles.length>0)rafId=requestAnimationFrame(tick);
+  else{ctx.clearRect(0,0,canvas.width,canvas.height);rafId=null;}
+}
+
+resizeCanvas();
+startSession();
+</script>
+</body>
+</html>
